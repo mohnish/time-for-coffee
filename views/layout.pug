@@ -1,0 +1,134 @@
+doctype html
+html
+  head
+    title= title
+    meta(name='viewport', content='width=device-width, initial-scale=1')
+    link(rel='stylesheet', href='https://unpkg.com/tachyons@4.10.0/css/tachyons.min.css')
+    link(rel='stylesheet', href='/stylesheets/style.css')
+    link(rel='stylesheet', href='/fontawesome-free-5.8.2-web/css/all.css')
+  body
+    .nav.fr.mt2.mr2
+      a(href='/register')
+        register new pot
+    .layout.br4.pa4
+      block content
+    script(src="/socket.io/socket.io.js")
+    script.
+      var coffeeName = document.querySelector('#coffee-name');
+      var coffeeLeft = document.querySelector('#coffee-left');
+      var rules = document.styleSheets[1].cssRules;
+      var coffeLevelRule = [].filter.call(rules, (rule) => (rule.name == "coffee" && rule.type == CSSRule.KEYFRAMES_RULE))[0];
+
+      const socket = io('/');
+      var input = document.querySelector('#pot-input-text');
+      var uuidInput = document.querySelector('#pot-uuid-text');
+
+      if(input) {
+        input.addEventListener('keyup', async function(event) {
+          if (event.keyCode === 13 || event.keyCode === 9) {
+            console.log('event.keyCode', event.keyCode);
+            event.preventDefault();
+            params = { "pot_id": uuidInput.value, "pot_name": document.querySelector('#pot-input-text').value, "empty_pot_weight": 0, "pot_capacity": 0, "current_weight": 0 }
+            console.log('input', params);
+            const response = await request('/register', params, 'POST');
+            console.log('response', response);
+          }
+        });
+      }
+
+      if(uuidInput) {
+        uuidInput.addEventListener('keyup', async function(event) {
+          console.log('event.keyCode', event.keyCode);
+          if (event.keyCode === 13 || event.keyCode === 9) {
+            event.preventDefault();
+            params = { "pot_id": uuidInput.value, "pot_name": input.value, "empty_pot_weight": 0, "pot_capacity": 0, "current_weight": 0 }
+            console.log('uuidInput', params);
+            const response = await request('/register', params, 'POST');
+            document.querySelector('#pot-input-text').select();
+            console.log('response', response);
+          }
+        });
+      }
+
+      function request(url, params, type) {
+        return new Promise((resolve, reject) => {
+          var xmlhttp = new XMLHttpRequest();
+
+          xmlhttp.open(type, url, true);
+          xmlhttp.setRequestHeader("Content-type", "application/json;charset=UTF-8");
+          xmlhttp.send(JSON.stringify(params));
+
+          xmlhttp.onreadystatechange = function() {
+              console.log('triggered', xmlhttp.status);
+              if (xmlhttp.readyState == XMLHttpRequest.DONE) {
+                 if (xmlhttp.status == 200) {
+                     console.log('success', JSON.parse(xmlhttp.responseText));
+                     resolve(JSON.parse(xmlhttp.responseText));
+                 }
+                 else {
+                     reject();
+                 }
+              }
+          };
+        });
+      }
+
+      socket.on('connect', function() {
+        console.log('connection established');
+      });
+      socket.on('coffee-data', function(data) {
+        var pot = {
+          name: data.pot_name,
+          cupSize: 200,
+          min: Math.max(data.empty_pot_weight, 0),
+          max: data.pot_capacity,
+          current: data.current_weight,
+          updateCurrentLevel: () => {
+            var potMaxHeight = 68;
+            var potMinHeight = 0;
+            var potMaxCoffee = pot.max;
+            var potMinCoffee = pot.min;
+            var potVarianceFactor = Math.abs(potMaxHeight / potMaxCoffee);
+            var currPotLevel = Math.abs(pot.current * potVarianceFactor);
+
+            coffeLevelRule.appendRule(`100% { height: ${currPotLevel}px; }`);
+          },
+          remainingCups: () => {
+            return pot.current / pot.cupSize;
+          },
+          displayRemainingCups: () => {
+            var curr = pot.remainingCups();
+            var coffeeString = "";
+            for (var i = 0; i < curr; i++) coffeeString += "☕"
+
+            return coffeeString;
+          }
+        };
+
+        console.log('coffee-data ******', data);
+        console.log('calculated-pot-data ******', pot);
+
+        coffeeName.innerHTML = pot.name;
+        coffeeLeft.innerHTML = pot.displayRemainingCups();
+
+        pot.updateCurrentLevel();
+      });
+      socket.on('data', function(data) {
+        console.log("client data", data);
+        if (data === null) return;
+        if (data.pot_id) {
+          document.querySelector('#pot-uuid-text').value = data.pot_id;
+          document.querySelector('#pot-input-text').disabled = false;
+        }
+        if (data.pot_name) {
+          document.querySelector('#pot-input-text').value = data.pot_name;
+        }
+        if (data.empty_pot_weight > 0) {
+          document.querySelector('.empty-pot').style.color = '#349cee';
+          document.querySelector('#empty-pot-check').style.visibility = 'visible';
+        }
+        if (data.pot_capacity > data.empty_pot_weight) {
+          document.querySelector('.full-pot').style.color = '#349cee';
+          document.querySelector('#pot-capacity-check').style.visibility = 'visible';
+        }
+      });

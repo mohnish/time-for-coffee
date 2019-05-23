@@ -1,0 +1,20 @@
+extends layout
+
+block content
+
+  div.pot-register
+    div.pot-uuid
+      label(class='name-label') Pot UUID: 
+      input(type='text', class='input-text', id='pot-uuid-text', value=uuid)
+    div.pot-name
+      label(class='name-label') Pot Name: 
+      input(type='text', class='input-text', id='pot-input-text', value=name)
+    div.label.empty-pot
+      label(class='empty-label') Place empty pot on scale
+      i(class='fas fa-check-square green-check', id='empty-pot-check', style='visibility:hidden')
+    div.label.full-pot
+      label(class='capacity-label') Fill the pot
+      i(class='green-check fas fa-check-square', id='pot-capacity-check', style='visibility:hidden')
+
+    a(href="/")
+      button(type='button', class='done-btn') Go Back
