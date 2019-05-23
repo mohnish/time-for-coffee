@@ -1,6 +1,6 @@
-# Time4Coffee
+# Time for Coffee
 
->Time4Coffee is a way to monitor the coffee levels of a coffee pot
+>Raspberry Pi project to track the the coffee level in a Coffee Pot
 
 ## Introduction
 
